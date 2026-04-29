@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildSuite Production</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1D9E75; --green-dark: #0F6E56; --green-light: #E1F5EE;
+      --green-glow: rgba(29,158,117,0.18); --text: #0f1c17; --muted: #6b7f78;
+      --border: #d4e8df; --bg: #f4faf7; --white: #ffffff; --red: #e05252;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif; background: var(--bg);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
+    }
+    body::before {
+      content: ''; position: fixed; top: -120px; left: -120px;
+      width: 480px; height: 480px;
+      background: radial-gradient(circle, rgba(29,158,117,0.12) 0%, transparent 70%);
+      border-radius: 50%; pointer-events: none;
+    }
+    body::after {
+      content: ''; position: fixed; bottom: -100px; right: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(29,158,117,0.09) 0%, transparent 70%);
+      border-radius: 50%; pointer-events: none;
+    }
+    .wrapper { width: 100%; max-width: 420px; padding: 24px 16px; animation: fadeUp 0.5s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .logo-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 36px; }
+    .logo-icon { width: 36px; height: 36px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .logo-icon svg { width: 20px; height: 20px; }
+    .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+    .logo-text span:first-child { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+    .logo-text span:last-child { font-size: 11px; font-weight: 400; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 36px 32px; box-shadow: 0 4px 32px rgba(0,0,0,0.06); }
+    .card-title { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.4px; margin-bottom: 4px; }
+    .card-sub { font-size: 13.5px; color: var(--muted); margin-bottom: 28px; }
+    .field { margin-bottom: 18px; }
+    label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 7px; }
+    input {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 14.5px; font-family: inherit; color: var(--text); background: var(--bg); outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); background: var(--white); }
+    input::placeholder { color: #b0c4bc; }
+    .btn {
+      width: 100%; padding: 13px; background: var(--green); color: #fff;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: background .2s, transform .1s; margin-top: 4px;
+    }
+    .btn:hover { background: var(--green-dark); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+    .btn-inner { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-box { display: none; background: #fff5f5; border: 1px solid #fccaca; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--red); margin-bottom: 16px; align-items: center; gap: 8px; }
+    .error-box.show { display: flex; }
+    .redirect-screen { display: none; text-align: center; animation: fadeUp .4s ease both; }
+    .redirect-screen.show { display: block; }
+    .login-form.hide { display: none; }
+    .redirect-icon { width: 64px; height: 64px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+    .redirect-icon svg { width: 30px; height: 30px; }
+    .redirect-title { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: -0.3px; }
+    .redirect-sub { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    .redirect-role { display: inline-block; font-family: 'DM Mono', monospace; font-size: 13px; background: var(--green-light); color: var(--green-dark); padding: 4px 12px; border-radius: 20px; margin-bottom: 24px; }
+    .redirect-dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+    .redirect-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: bounce 1.2s infinite; }
+    .redirect-dots span:nth-child(2) { animation-delay: .2s; }
+    .redirect-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: .4; } 40% { transform: scale(1); opacity: 1; } }
+    .footer { text-align: center; margin-top: 24px; font-size: 12px; color: var(--muted); }
+    .footer span { color: var(--green); font-weight: 500; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="logo-bar">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <span>BuildSuite</span>
+      <span>Production</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Login Form -->
+    <div class="login-form" id="loginForm">
+      <div class="card-title">Welcome back</div>
+      <div class="card-sub">Sign in to your factory dashboard</div>
+      <div class="error-box" id="errorBox">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="errorMsg">Invalid email or password.</span>
+      </div>
+      <div class="field">
+        <label>Email or Username</label>
+        <input type="text" id="loginInput" placeholder="you@company.com" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <button class="btn" id="loginBtn" onclick="handleLogin()">
+        <span class="btn-inner" id="btnInner">Sign in</span>
+      </button>
+    </div>
+
+    <!-- Redirecting Screen -->
+    <div class="redirect-screen" id="redirectScreen">
+      <div class="redirect-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="redirect-title">Signed in!</div>
+      <div class="redirect-sub">Taking you to your dashboard</div>
+      <div class="redirect-role" id="redirectRole">Loading...</div>
+      <div class="redirect-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div class="footer">Powered by <span>BuildSuite</span> · Amazing Exports Corporation</div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+  const supabase = createClient(
+    'https://wylcmvumadbkgwfnqtmh.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bGNtdnVtYWRia2d3Zm5xdG1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzQxNjAsImV4cCI6MjA5MzA1MDE2MH0.sS9N0yxtidTiaSE7Ula282IWMEyTzVRH3kQ8wwSOXQE'
+  )
+
+  // Role Profile → page mapping
+  // Add new roles here as you build more pages
+  const ROLE_REDIRECTS = {
+    'Admin Profile':                 'admin.html',
+    'Factory Owner Profile':         'owner.html',
+    'Factory Manager Profile':       'manager.html',
+    'Line Supervisor Profile':       'supervisor.html',
+    'Department Supervisor Profile': 'supervisor.html',
+  }
+
+  // If already logged in, redirect immediately
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) await redirectUser(session.user)
+
+  window.handleLogin = async function () {
+    const input = document.getElementById('loginInput').value.trim()
+    const password = document.getElementById('loginPass').value
+    hideError()
+
+    if (!input || !password) {
+      showError('Please enter your email/username and password.')
+      return
+    }
+
+    setLoading(true)
+
+    let email = input
+
+    // Username login — look up email from user_profiles
+    if (!input.includes('@')) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('username', input)
+        .single()
+
+      if (!profile) {
+        setLoading(false)
+        showError('Username not found. Please try your email address.')
+        return
+      }
+      // Username found but we need email for Supabase auth
+      // For now ask user to use email — username auth via Edge Function coming next
+      setLoading(false)
+      showError('Username login coming soon. Please use your email for now.')
+      return
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+
+    if (error) {
+      showError('Invalid email or password. Please try again.')
+      return
+    }
+
+    await redirectUser(data.user)
+  }
+
+  async function redirectUser(user) {
+    // Fetch user profile + role profile name
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('full_name, role_profiles(name)')
+      .eq('id', user.id)
+      .single()
+
+    const roleName = profile?.role_profiles?.name || null
+    const targetPage = ROLE_REDIRECTS[roleName] || null
+
+    // Show redirect screen
+    document.getElementById('loginForm').classList.add('hide')
+    document.getElementById('redirectRole').textContent = roleName || 'No role assigned'
+    document.getElementById('redirectScreen').classList.add('show')
+
+    setTimeout(() => {
+      if (targetPage) {
+        window.location.href = targetPage
+      } else {
+        // No role profile assigned yet — show helpful message
+        document.getElementById('redirectScreen').innerHTML = `
+          <div style="text-align:center;padding:10px 0">
+            <div style="font-size:36px;margin-bottom:16px">⚠️</div>
+            <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:8px">No role assigned</div>
+            <div style="font-size:13.5px;color:var(--muted);margin-bottom:20px">Your account exists but has no role profile assigned yet.<br/>Please contact your admin.</div>
+            <button onclick="handleLogout()" style="padding:9px 20px;border:1.5px solid var(--border);border-radius:8px;background:transparent;font-family:inherit;font-size:13.5px;cursor:pointer;color:var(--muted)">Sign out</button>
+          </div>`
+      }
+    }, 1500)
+  }
+
+  window.handleLogout = async function() {
+    await supabase.auth.signOut()
+    window.location.reload()
+  }
+
+  function showError(msg) {
+    document.getElementById('errorMsg').textContent = msg
+    document.getElementById('errorBox').classList.add('show')
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('show')
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('loginBtn')
+    const inner = document.getElementById('btnInner')
+    btn.disabled = on
+    inner.innerHTML = on ? '<div class="spinner"></div> Signing in...' : 'Sign in'
+  }
+
+  document.getElementById('loginPass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.handleLogin()
+  })
+</script>
+</body>
+</html>
