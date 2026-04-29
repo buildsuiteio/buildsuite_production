@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildSuite Production — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1D9E75; --green-dark: #0F6E56; --green-light: #E8F7F2; --green-glow: rgba(29,158,117,0.15);
+      --text: #0f1c17; --muted: #6b7f78; --border: #e2ede9; --bg: #f6faf8; --white: #ffffff;
+      --red: #e05252; --red-light: #fff5f5; --amber: #f59e0b; --amber-light: #fffbeb;
+      --blue: #3b82f6; --blue-light: #eff6ff;
+      --sidebar-w: 240px;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── AUTH SCREEN ── */
+    .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .auth-card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px; box-shadow: 0 4px 32px rgba(0,0,0,0.06); animation: fadeUp .4s ease both; }
+    .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+    .auth-logo-icon { width: 38px; height: 38px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .auth-logo-icon svg { width: 20px; height: 20px; }
+    .auth-logo-text { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -.3px; }
+    .auth-logo-sub { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .auth-title { font-size: 22px; font-weight: 600; letter-spacing: -.4px; margin-bottom: 4px; }
+    .auth-sub { font-size: 13.5px; color: var(--muted); margin-bottom: 28px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 12.5px; font-weight: 500; margin-bottom: 6px; }
+    input[type=text], input[type=email], input[type=password], input[type=time], input[type=date], select, textarea {
+      width: 100%; padding: 10px 13px; border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 14px; font-family: inherit; color: var(--text); background: var(--bg); outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); background: var(--white); }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn { padding: 10px 18px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 7px; }
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-secondary { background: var(--white); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+    .btn-danger { background: var(--red-light); color: var(--red); border: 1.5px solid #fccaca; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-full { width: 100%; justify-content: center; padding: 12px; }
+    .error-box { display: none; background: var(--red-light); border: 1px solid #fccaca; border-radius: 9px; padding: 10px 13px; font-size: 13px; color: var(--red); margin-bottom: 14px; }
+    .error-box.show { display: block; }
+    .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── APP LAYOUT ── */
+    .app { display: none; min-height: 100vh; }
+    .app.show { display: flex; }
+    .sidebar { width: var(--sidebar-w); background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; }
+    .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .sidebar-logo-icon { width: 32px; height: 32px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sidebar-logo-icon svg { width: 17px; height: 17px; }
+    .sidebar-logo-text { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -.2px; line-height: 1.1; }
+    .sidebar-logo-sub { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .sidebar-section { padding: 16px 10px 8px; }
+    .sidebar-section-label { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; padding: 0 8px; margin-bottom: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: var(--muted); font-weight: 500; transition: all .15s; margin-bottom: 1px; }
+    .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
+    .nav-item.active { background: var(--green-light); color: var(--green-dark); font-weight: 600; }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-badge { margin-left: auto; background: var(--green); color: #fff; font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 20px; }
+    .sidebar-bottom { margin-top: auto; padding: 14px 10px; border-top: 1px solid var(--border); }
+    .user-pill { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; }
+    .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--green-dark); flex-shrink: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .user-role { font-size: 11px; color: var(--muted); }
+    .btn-logout { width: 100%; margin-top: 8px; padding: 8px; background: transparent; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; font-family: inherit; transition: all .2s; }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+    .topbar-title { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+    .topbar-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
+    .content { padding: 28px; flex: 1; }
+
+    /* ── PAGE ── */
+    .page { display: none; animation: fadeUp .3s ease both; }
+    .page.active { display: block; }
+
+    /* ── TABLE ── */
+    .table-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .table-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .table-title { font-size: 15px; font-weight: 600; }
+    .table-count { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 11px 16px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; background: var(--bg); border-bottom: 1px solid var(--border); }
+    td { padding: 12px 16px; font-size: 13.5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
+    .badge-green { background: var(--green-light); color: var(--green-dark); }
+    .badge-red { background: var(--red-light); color: var(--red); }
+    .badge-amber { background: var(--amber-light); color: #92400e; }
+    .badge-blue { background: var(--blue-light); color: #1d4ed8; }
+    .table-actions { display: flex; gap: 6px; }
+    .btn-icon { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 7px; background: var(--white); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .btn-icon:hover { border-color: var(--green); background: var(--green-light); }
+    .btn-icon svg { width: 14px; height: 14px; color: var(--muted); }
+    .btn-icon:hover svg { color: var(--green-dark); }
+    .empty-state { padding: 48px; text-align: center; color: var(--muted); }
+    .empty-state svg { width: 40px; height: 40px; margin: 0 auto 12px; opacity: .3; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── MODAL ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--white); border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.15); animation: fadeUp .25s ease both; }
+    .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close { width: 28px; height: 28px; border: none; background: var(--bg); border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--muted); }
+    .modal-close:hover { background: var(--border); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* ── CHIPS (role selector) ── */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .chip { padding: 5px 12px; border-radius: 20px; font-size: 12.5px; border: 1.5px solid var(--border); cursor: pointer; transition: all .15s; font-family: inherit; background: var(--white); color: var(--muted); }
+    .chip.selected { background: var(--green-light); border-color: var(--green); color: var(--green-dark); font-weight: 600; }
+
+    /* ── STATS ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+    .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--text); margin-top: 4px; letter-spacing: -1px; }
+    .stat-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+
+    /* inline create */
+    .inline-create { display: flex; gap: 8px; margin-top: 8px; }
+    .inline-create input { flex: 1; }
+
+    /* toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 500; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: var(--green-dark); }
+    .toast.error { background: var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── AUTH ── -->
+<div class="auth-wrap" id="authWrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div>
+        <div class="auth-logo-text">BuildSuite Production</div>
+        <div class="auth-logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <div class="auth-title">Admin Sign In</div>
+    <div class="auth-sub">Only admin users can access this panel</div>
+    <div class="error-box" id="authError"></div>
+    <div class="field"><label>Email or Username</label><input type="text" id="loginInput" placeholder="admin@amazingexports.com" /></div>
+    <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" /></div>
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div>
+        <div class="sidebar-logo-text">BuildSuite</div>
+        <div class="sidebar-logo-sub">Admin Panel</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Access Control</div>
+      <div class="nav-item" onclick="showPage('users', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users <span class="nav-badge" id="badge-users">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('roles', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Roles
+      </div>
+      <div class="nav-item" onclick="showPage('roleprofiles', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Role Profiles
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Master Data</div>
+      <div class="nav-item" onclick="showPage('factories', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20M4 20V10l6-6 6 6v10"/><path d="M10 20v-5h4v5"/></svg>
+        Factories
+      </div>
+      <div class="nav-item" onclick="showPage('customers', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        Customers
+      </div>
+      <div class="nav-item" onclick="showPage('departments', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Departments
+      </div>
+      <div class="nav-item" onclick="showPage('shifts', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Shifts
+      </div>
+      <div class="nav-item" onclick="showPage('orders', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Orders
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-pill">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div>
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role">Administrator</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="pageTitle">Dashboard</div>
+        <div class="topbar-sub" id="pageSub">Amazing Exports Corporation</div>
+      </div>
+      <button class="btn btn-primary" id="topbarAddBtn" onclick="openAddModal()" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span id="topbarAddLabel">Add New</span>
+      </button>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div style="color:var(--muted);font-size:14px;text-align:center;padding:40px 0">
+          Select a section from the sidebar to manage your data.
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="page" id="page-users">
+        <div class="table-card">
+          <div class="table-header">
+            <div><div class="table-title">Users</div><div class="table-count" id="users-count"></div></div>
+          </div>
+          <div id="users-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- ROLES -->
+      <div class="page" id="page-roles">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Roles</div><div class="table-count" id="roles-count"></div></div></div>
+          <div id="roles-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- ROLE PROFILES -->
+      <div class="page" id="page-roleprofiles">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Role Profiles</div><div class="table-count" id="roleprofiles-count"></div></div></div>
+          <div id="roleprofiles-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- FACTORIES -->
+      <div class="page" id="page-factories">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Factories</div><div class="table-count" id="factories-count"></div></div></div>
+          <div id="factories-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- CUSTOMERS -->
+      <div class="page" id="page-customers">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Customers</div><div class="table-count" id="customers-count"></div></div></div>
+          <div id="customers-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- DEPARTMENTS -->
+      <div class="page" id="page-departments">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Departments</div><div class="table-count" id="departments-count"></div></div></div>
+          <div id="departments-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- SHIFTS -->
+      <div class="page" id="page-shifts">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Shifts</div><div class="table-count" id="shifts-count"></div></div></div>
+          <div id="shifts-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- ORDERS -->
+      <div class="page" id="page-orders">
+        <div class="table-card">
+          <div class="table-header"><div><div class="table-title">Orders</div><div class="table-count" id="orders-count"></div></div></div>
+          <div id="orders-table-wrap"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ── MODAL ── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Add</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+const sb = createClient(
+  'https://wylcmvumadbkgwfnqtmh.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bGNtdnVtYWRia2d3Zm5xdG1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzQxNjAsImV4cCI6MjA5MzA1MDE2MH0.sS9N0yxtidTiaSE7Ula282IWMEyTzVRH3kQ8wwSOXQE'
+)
+
+// ── STATE ──
+let currentPage = 'dashboard'
+let currentModal = null
+let editingId = null
+let allRoles = []
+let allRoleProfiles = []
+let allCustomers = []
+let allFactories = []
+
+// ── TOAST ──
+function toast(msg, type='success') {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.className = `toast ${type} show`
+  setTimeout(() => t.classList.remove('show'), 3000)
+}
+
+// ── AUTH ──
+window.doLogin = async function() {
+  const input = document.getElementById('loginInput').value.trim()
+  const pass = document.getElementById('loginPass').value
+  const err = document.getElementById('authError')
+  const btn = document.getElementById('loginBtn')
+  err.classList.remove('show')
+  btn.disabled = true
+  btn.innerHTML = '<div class="spinner"></div> Signing in...'
+
+  // Try email login first, then username lookup
+  let email = input
+  if (!input.includes('@')) {
+    // username lookup
+    const { data: profile } = await sb.from('user_profiles').select('id').eq('username', input).single()
+    if (!profile) {
+      err.textContent = 'Username not found.'
+      err.classList.add('show')
+      btn.disabled = false; btn.textContent = 'Sign In'; return
+    }
+    const { data: { user: u } } = await sb.auth.admin?.getUserById?.(profile.id) || { data: {} }
+    err.textContent = 'Please use your email to login, or contact admin.'
+    err.classList.add('show')
+    btn.disabled = false; btn.textContent = 'Sign In'; return
+  }
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass })
+  if (error) {
+    err.textContent = 'Invalid email or password.'
+    err.classList.add('show')
+    btn.disabled = false; btn.textContent = 'Sign In'; return
+  }
+
+  await initApp(data.user)
+}
+
+window.doLogout = async function() {
+  await sb.auth.signOut()
+  document.getElementById('app').classList.remove('show')
+  document.getElementById('authWrap').style.display = 'flex'
+  document.getElementById('loginPass').value = ''
+}
+
+async function initApp(user) {
+  document.getElementById('authWrap').style.display = 'none'
+  document.getElementById('app').classList.add('show')
+  const initial = (user.email || 'A')[0].toUpperCase()
+  document.getElementById('userAvatar').textContent = initial
+  document.getElementById('userName').textContent = user.email?.split('@')[0] || 'Admin'
+  await loadMasterData()
+  loadDashboard()
+}
+
+// ── CHECK SESSION ──
+const { data: { session } } = await sb.auth.getSession()
+if (session) await initApp(session.user)
+
+// ── MASTER DATA ──
+async function loadMasterData() {
+  const [r, rp, c, f] = await Promise.all([
+    sb.from('roles').select('*').eq('is_active', true),
+    sb.from('role_profiles').select('*').eq('is_active', true),
+    sb.from('customers').select('*').eq('is_active', true),
+    sb.from('factories').select('*').eq('is_active', true)
+  ])
+  allRoles = r.data || []
+  allRoleProfiles = rp.data || []
+  allCustomers = c.data || []
+  allFactories = f.data || []
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  const tables = ['users (user_profiles)', 'roles', 'role_profiles', 'customers', 'departments', 'shifts', 'orders', 'factories']
+  const counts = await Promise.all([
+    sb.from('user_profiles').select('id', {count:'exact',head:true}),
+    sb.from('roles').select('id', {count:'exact',head:true}),
+    sb.from('role_profiles').select('id', {count:'exact',head:true}),
+    sb.from('customers').select('id', {count:'exact',head:true}),
+    sb.from('departments').select('id', {count:'exact',head:true}),
+    sb.from('shifts').select('id', {count:'exact',head:true}),
+    sb.from('orders').select('id', {count:'exact',head:true}),
+    sb.from('factories').select('id', {count:'exact',head:true}),
+  ])
+  const labels = ['Users','Roles','Role Profiles','Customers','Departments','Shifts','Orders','Factories']
+  const icons = ['👤','🛡️','👥','🏢','🏭','🕐','📋','🏗️']
+  const grid = document.getElementById('statsGrid')
+  grid.innerHTML = labels.map((l,i) => `
+    <div class="stat-card">
+      <div style="font-size:24px;margin-bottom:8px">${icons[i]}</div>
+      <div class="stat-label">${l}</div>
+      <div class="stat-value">${counts[i].count ?? 0}</div>
+    </div>`).join('')
+  document.getElementById('badge-users').textContent = counts[0].count ?? 0
+}
+
+// ── PAGE NAV ──
+window.showPage = function(page, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  el.classList.add('active')
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.getElementById('page-'+page).classList.add('active')
+  currentPage = page
+  const titles = {dashboard:'Dashboard',users:'Users',roles:'Roles',roleprofiles:'Role Profiles',factories:'Factories',customers:'Customers',departments:'Departments',shifts:'Shifts',orders:'Orders'}
+  document.getElementById('pageTitle').textContent = titles[page] || page
+  const addBtn = document.getElementById('topbarAddBtn')
+  const addLabel = document.getElementById('topbarAddLabel')
+  if (page === 'dashboard') { addBtn.style.display='none'; return }
+  addBtn.style.display='flex'
+  addLabel.textContent = 'Add ' + (titles[page] || 'New')
+  loadPage(page)
+}
+
+async function loadPage(page) {
+  if (page === 'users') await loadUsers()
+  else if (page === 'roles') await loadRoles()
+  else if (page === 'roleprofiles') await loadRoleProfiles()
+  else if (page === 'factories') await loadFactories()
+  else if (page === 'customers') await loadCustomers()
+  else if (page === 'departments') await loadDepartments()
+  else if (page === 'shifts') await loadShifts()
+  else if (page === 'orders') await loadOrders()
+}
+
+// ── RENDER TABLE ──
+function renderTable(wrapperId, countId, cols, rows, actions) {
+  const wrap = document.getElementById(wrapperId)
+  const count = document.getElementById(countId)
+  if (count) count.textContent = `${rows.length} record${rows.length!==1?'s':''}`
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>No records yet. Click "Add" to create one.</p></div>`
+    return
+  }
+  wrap.innerHTML = `<table><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}<th>Actions</th></tr></thead><tbody>${
+    rows.map(r=>`<tr>${cols.map(c=>`<td>${c.render?c.render(r):r[c.key]??'—'}</td>`).join('')}<td><div class="table-actions">${actions(r)}</div></td></tr>`).join('')
+  }</tbody></table>`
+}
+
+// ── USERS ──
+async function loadUsers() {
+  const { data } = await sb.from('user_profiles').select('*, role_profiles(name)').order('created_at', {ascending:false})
+  renderTable('users-table-wrap','users-count',[
+    {label:'Name', key:'full_name'},
+    {label:'Username', key:'username', render:r=>`<code style="font-family:'DM Mono',monospace;font-size:12px;background:var(--bg);padding:2px 7px;border-radius:5px">${r.username||'—'}</code>`},
+    {label:'Role Profile', render:r=>r.role_profiles?.name ? `<span class="badge badge-blue">${r.role_profiles.name}</span>` : '—'},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editUser('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editUser = async function(id) {
+  const { data: u } = await sb.from('user_profiles').select('*').eq('id',id).single()
+  editingId = id
+  currentModal = 'users'
+  document.getElementById('modalTitle').textContent = 'Edit User'
+  document.getElementById('modalBody').innerHTML = `
+    <div class="field"><label>Full Name</label><input type="text" id="m-fullname" value="${u.full_name||''}" /></div>
+    <div class="field"><label>Username</label><input type="text" id="m-username" value="${u.username||''}" /></div>
+    <div class="field"><label>Role Profile</label><select id="m-roleprofile">
+      <option value="">— Select —</option>
+      ${allRoleProfiles.map(rp=>`<option value="${rp.id}" ${u.role_profile_id===rp.id?'selected':''}>${rp.name}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Factory</label><select id="m-factory">
+      <option value="">— Select —</option>
+      ${allFactories.map(f=>`<option value="${f.id}" ${u.factory_id===f.id?'selected':''}>${f.name}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Status</label><select id="m-active">
+      <option value="true" ${u.is_active?'selected':''}>Active</option>
+      <option value="false" ${!u.is_active?'selected':''}>Inactive</option>
+    </select></div>`
+  openModal()
+}
+
+// ── ROLES ──
+async function loadRoles() {
+  const { data } = await sb.from('roles').select('*').order('created_at')
+  renderTable('roles-table-wrap','roles-count',[
+    {label:'Role Name', key:'name'},
+    {label:'Description', key:'description', render:r=>r.description||'—'},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editRole('${r.id}','${r.name}','${r.description||''}',${r.is_active})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editRole = function(id,name,desc,active) {
+  editingId=id; currentModal='roles'
+  document.getElementById('modalTitle').textContent='Edit Role'
+  document.getElementById('modalBody').innerHTML=`
+    <div class="field"><label>Role Name</label><input type="text" id="m-name" value="${name}" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc">${desc}</textarea></div>
+    <div class="field"><label>Status</label><select id="m-active"><option value="true" ${active?'selected':''}>Active</option><option value="false" ${!active?'selected':''}>Inactive</option></select></div>`
+  openModal()
+}
+
+// ── ROLE PROFILES ──
+async function loadRoleProfiles() {
+  const { data: profiles } = await sb.from('role_profiles').select('*, role_profile_roles(roles(name))').order('created_at')
+  renderTable('roleprofiles-table-wrap','roleprofiles-count',[
+    {label:'Profile Name', key:'name'},
+    {label:'Roles Included', render:r=>{
+      const roles = r.role_profile_roles?.map(x=>x.roles?.name).filter(Boolean)||[]
+      return roles.length ? roles.map(n=>`<span class="badge badge-blue" style="margin-right:4px">${n}</span>`).join('') : '—'
+    }},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], profiles||[], r=>`
+    <button class="btn-icon" onclick="editRoleProfile('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editRoleProfile = async function(id) {
+  const { data: rp } = await sb.from('role_profiles').select('*, role_profile_roles(role_id)').eq('id',id).single()
+  const selectedRoleIds = rp.role_profile_roles?.map(x=>x.role_id)||[]
+  editingId=id; currentModal='roleprofiles'
+  document.getElementById('modalTitle').textContent='Edit Role Profile'
+  document.getElementById('modalBody').innerHTML=`
+    <div class="field"><label>Profile Name</label><input type="text" id="m-name" value="${rp.name}" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc">${rp.description||''}</textarea></div>
+    <div class="field"><label>Assign Roles</label>
+      <div class="chips" id="roleChips">
+        ${allRoles.map(r=>`<button type="button" class="chip ${selectedRoleIds.includes(r.id)?'selected':''}" data-id="${r.id}" onclick="toggleChip(this)">${r.name}</button>`).join('')}
+      </div>
+    </div>`
+  openModal()
+}
+
+window.toggleChip = function(el) { el.classList.toggle('selected') }
+
+// ── FACTORIES ──
+async function loadFactories() {
+  const { data } = await sb.from('factories').select('*').order('created_at')
+  renderTable('factories-table-wrap','factories-count',[
+    {label:'Factory Name', key:'name'},
+    {label:'Location', key:'location', render:r=>r.location||'—'},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editFactory('${r.id}','${r.name}','${r.location||''}',${r.is_active})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editFactory = function(id,name,loc,active) {
+  editingId=id; currentModal='factories'
+  document.getElementById('modalTitle').textContent='Edit Factory'
+  document.getElementById('modalBody').innerHTML=`
+    <div class="field"><label>Factory Name</label><input type="text" id="m-name" value="${name}" /></div>
+    <div class="field"><label>Location</label><input type="text" id="m-location" value="${loc}" /></div>
+    <div class="field"><label>Status</label><select id="m-active"><option value="true" ${active?'selected':''}>Active</option><option value="false" ${!active?'selected':''}>Inactive</option></select></div>`
+  openModal()
+}
+
+// ── CUSTOMERS ──
+async function loadCustomers() {
+  const { data } = await sb.from('customers').select('*').order('created_at', {ascending:false})
+  renderTable('customers-table-wrap','customers-count',[
+    {label:'Customer Name', key:'name'},
+    {label:'Contact Person', key:'contact_person', render:r=>r.contact_person||'—'},
+    {label:'Email', key:'email', render:r=>r.email||'—'},
+    {label:'Phone', key:'phone', render:r=>r.phone||'—'},
+    {label:'Country', key:'country', render:r=>r.country||'—'},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editCustomer('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editCustomer = async function(id) {
+  const { data: c } = await sb.from('customers').select('*').eq('id',id).single()
+  editingId=id; currentModal='customers'
+  document.getElementById('modalTitle').textContent='Edit Customer'
+  document.getElementById('modalBody').innerHTML=`
+    <div class="field"><label>Customer Name</label><input type="text" id="m-name" value="${c.name}" /></div>
+    <div class="field"><label>Contact Person</label><input type="text" id="m-contact" value="${c.contact_person||''}" /></div>
+    <div class="field"><label>Email</label><input type="email" id="m-email" value="${c.email||''}" /></div>
+    <div class="field"><label>Phone</label><input type="text" id="m-phone" value="${c.phone||''}" /></div>
+    <div class="field"><label>Address</label><textarea id="m-address">${c.address||''}</textarea></div>
+    <div class="field"><label>Country</label><input type="text" id="m-country" value="${c.country||''}" /></div>
+    <div class="field"><label>Status</label><select id="m-active"><option value="true" ${c.is_active?'selected':''}>Active</option><option value="false" ${!c.is_active?'selected':''}>Inactive</option></select></div>`
+  openModal()
+}
+
+// ── DEPARTMENTS ──
+async function loadDepartments() {
+  const { data } = await sb.from('departments').select('*, factories(name)').order('name')
+  renderTable('departments-table-wrap','departments-count',[
+    {label:'Department Name', key:'name'},
+    {label:'Factory', render:r=>r.factories?.name||'All Factories'},
+    {label:'Description', key:'description', render:r=>r.description||'—'},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editDept('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editDept = async function(id) {
+  const { data: d } = await sb.from('departments').select('*').eq('id',id).single()
+  editingId=id; currentModal='departments'
+  document.getElementById('modalTitle').textContent='Edit Department'
+  document.getElementById('modalBody').innerHTML=`
+    <div class="field"><label>Department Name</label><input type="text" id="m-name" value="${d.name}" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc">${d.description||''}</textarea></div>
+    <div class="field"><label>Factory (optional)</label><select id="m-factory">
+      <option value="">All Factories</option>
+      ${allFactories.map(f=>`<option value="${f.id}" ${d.factory_id===f.id?'selected':''}>${f.name}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Status</label><select id="m-active"><option value="true" ${d.is_active?'selected':''}>Active</option><option value="false" ${!d.is_active?'selected':''}>Inactive</option></select></div>`
+  openModal()
+}
+
+// ── SHIFTS ──
+async function loadShifts() {
+  const { data } = await sb.from('shifts').select('*').order('start_time')
+  renderTable('shifts-table-wrap','shifts-count',[
+    {label:'Shift Name', key:'name'},
+    {label:'Start Time', key:'start_time', render:r=>r.start_time||'—'},
+    {label:'End Time', key:'end_time', render:r=>r.end_time||'—'},
+    {label:'Status', render:r=>`<span class="badge ${r.is_active?'badge-green':'badge-red'}">${r.is_active?'Active':'Inactive'}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editShift('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editShift = async function(id) {
+  const { data: s } = await sb.from('shifts').select('*').eq('id',id).single()
+  editingId=id; currentModal='shifts'
+  document.getElementById('modalTitle').textContent='Edit Shift'
+  document.getElementById('modalBody').innerHTML=`
+    <div class="field"><label>Shift Name</label><input type="text" id="m-name" value="${s.name}" /></div>
+    <div class="field"><label>Start Time</label><input type="time" id="m-start" value="${s.start_time||''}" /></div>
+    <div class="field"><label>End Time</label><input type="time" id="m-end" value="${s.end_time||''}" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc">${s.description||''}</textarea></div>
+    <div class="field"><label>Status</label><select id="m-active"><option value="true" ${s.is_active?'selected':''}>Active</option><option value="false" ${!s.is_active?'selected':''}>Inactive</option></select></div>`
+  openModal()
+}
+
+// ── ORDERS ──
+async function loadOrders() {
+  const { data } = await sb.from('orders').select('*, customers(name), factories(name)').order('created_at',{ascending:false})
+  renderTable('orders-table-wrap','orders-count',[
+    {label:'Order No', key:'order_no', render:r=>`<strong style="font-family:'DM Mono',monospace;font-size:12.5px">${r.order_no}</strong>`},
+    {label:'Customer', render:r=>r.customers?.name||'—'},
+    {label:'Style No', key:'style_number', render:r=>r.style_number||'—'},
+    {label:'Product', key:'product_name'},
+    {label:'Qty', key:'quantity'},
+    {label:'Delivery', key:'delivery_date', render:r=>r.delivery_date||'—'},
+    {label:'Status', render:r=>`<span class="badge ${r.status==='active'?'badge-green':r.status==='completed'?'badge-blue':r.status==='delayed'?'badge-amber':'badge-red'}">${r.status}</span>`}
+  ], data||[], r=>`
+    <button class="btn-icon" onclick="editOrder('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+  `)
+}
+
+window.editOrder = async function(id) {
+  const { data: o } = await sb.from('orders').select('*').eq('id',id).single()
+  editingId=id; currentModal='orders'
+  document.getElementById('modalTitle').textContent='Edit Order'
+  document.getElementById('modalBody').innerHTML=buildOrderForm(o)
+  openModal()
+}
+
+function buildOrderForm(o={}) {
+  return `
+    <div class="field"><label>Order Number</label><input type="text" id="m-orderno" value="${o.order_no||''}" placeholder="ORD-1001" /></div>
+    <div class="field"><label>Customer</label>
+      <select id="m-customer">
+        <option value="">— Select Customer —</option>
+        ${allCustomers.map(c=>`<option value="${c.id}" ${o.customer_id===c.id?'selected':''}>${c.name}</option>`).join('')}
+      </select>
+      <div class="inline-create">
+        <input type="text" id="m-new-customer" placeholder="Or type new customer name..." />
+        <button type="button" class="btn btn-secondary" onclick="createCustomerInline()">Add</button>
+      </div>
+    </div>
+    <div class="field"><label>Style Number</label><input type="text" id="m-style" value="${o.style_number||''}" placeholder="H53745" /></div>
+    <div class="field"><label>Product Name</label><input type="text" id="m-product" value="${o.product_name||''}" placeholder="Kids Pyjama Pants" /></div>
+    <div class="field"><label>Quantity</label><input type="text" id="m-qty" value="${o.quantity||''}" placeholder="5000" /></div>
+    <div class="field"><label>Order Date</label><input type="date" id="m-orderdate" value="${o.order_date||''}" /></div>
+    <div class="field"><label>Delivery Date</label><input type="date" id="m-delivery" value="${o.delivery_date||''}" /></div>
+    <div class="field"><label>Factory</label><select id="m-factory">
+      <option value="">— Select Factory —</option>
+      ${allFactories.map(f=>`<option value="${f.id}" ${o.factory_id===f.id?'selected':''}>${f.name}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Status</label><select id="m-status">
+      <option value="active" ${o.status==='active'?'selected':''}>Active</option>
+      <option value="completed" ${o.status==='completed'?'selected':''}>Completed</option>
+      <option value="delayed" ${o.status==='delayed'?'selected':''}>Delayed</option>
+      <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Cancelled</option>
+    </select></div>
+    <div class="field"><label>Notes</label><textarea id="m-notes">${o.notes||''}</textarea></div>`
+}
+
+// Inline customer creation
+window.createCustomerInline = async function() {
+  const name = document.getElementById('m-new-customer').value.trim()
+  if (!name) return
+  const { data, error } = await sb.from('customers').insert({name}).select().single()
+  if (error) { toast('Failed to create customer','error'); return }
+  allCustomers.push(data)
+  const sel = document.getElementById('m-customer')
+  const opt = document.createElement('option')
+  opt.value = data.id; opt.textContent = data.name; opt.selected = true
+  sel.appendChild(opt)
+  document.getElementById('m-new-customer').value = ''
+  toast(`Customer "${name}" created!`)
+}
+
+// ── MODAL ADD (new record) ──
+window.openAddModal = function() {
+  editingId = null
+  const page = currentPage
+  currentModal = page
+  const titles = {users:'Add User',roles:'Add Role',roleprofiles:'Add Role Profile',factories:'Add Factory',customers:'Add Customer',departments:'Add Department',shifts:'Add Shift',orders:'Add Order'}
+  document.getElementById('modalTitle').textContent = titles[page] || 'Add'
+  let body = ''
+  if (page==='users') body=`
+    <div class="field"><label>Full Name</label><input type="text" id="m-fullname" placeholder="John Doe" /></div>
+    <div class="field"><label>Email</label><input type="email" id="m-email" placeholder="john@company.com" /></div>
+    <div class="field"><label>Username</label><input type="text" id="m-username" placeholder="john.doe" /></div>
+    <div class="field"><label>Password</label><input type="password" id="m-password" placeholder="Min 6 characters" /></div>
+    <div class="field"><label>Role Profile</label><select id="m-roleprofile"><option value="">— Select —</option>${allRoleProfiles.map(rp=>`<option value="${rp.id}">${rp.name}</option>`).join('')}</select></div>
+    <div class="field"><label>Factory</label><select id="m-factory"><option value="">— Select —</option>${allFactories.map(f=>`<option value="${f.id}">${f.name}</option>`).join('')}</select></div>`
+  else if (page==='roles') body=`<div class="field"><label>Role Name</label><input type="text" id="m-name" /></div><div class="field"><label>Description</label><textarea id="m-desc"></textarea></div>`
+  else if (page==='roleprofiles') body=`
+    <div class="field"><label>Profile Name</label><input type="text" id="m-name" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc"></textarea></div>
+    <div class="field"><label>Assign Roles</label><div class="chips" id="roleChips">${allRoles.map(r=>`<button type="button" class="chip" data-id="${r.id}" onclick="toggleChip(this)">${r.name}</button>`).join('')}</div></div>`
+  else if (page==='factories') body=`<div class="field"><label>Factory Name</label><input type="text" id="m-name" /></div><div class="field"><label>Location</label><input type="text" id="m-location" /></div>`
+  else if (page==='customers') body=`
+    <div class="field"><label>Customer Name</label><input type="text" id="m-name" /></div>
+    <div class="field"><label>Contact Person</label><input type="text" id="m-contact" /></div>
+    <div class="field"><label>Email</label><input type="email" id="m-email" /></div>
+    <div class="field"><label>Phone</label><input type="text" id="m-phone" /></div>
+    <div class="field"><label>Address</label><textarea id="m-address"></textarea></div>
+    <div class="field"><label>Country</label><input type="text" id="m-country" /></div>`
+  else if (page==='departments') body=`
+    <div class="field"><label>Department Name</label><input type="text" id="m-name" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc"></textarea></div>
+    <div class="field"><label>Factory (optional)</label><select id="m-factory"><option value="">All Factories</option>${allFactories.map(f=>`<option value="${f.id}">${f.name}</option>`).join('')}</select></div>`
+  else if (page==='shifts') body=`
+    <div class="field"><label>Shift Name</label><input type="text" id="m-name" /></div>
+    <div class="field"><label>Start Time</label><input type="time" id="m-start" /></div>
+    <div class="field"><label>End Time</label><input type="time" id="m-end" /></div>
+    <div class="field"><label>Description</label><textarea id="m-desc"></textarea></div>`
+  else if (page==='orders') body = buildOrderForm()
+  document.getElementById('modalBody').innerHTML = body
+  openModal()
+}
+
+// ── SAVE MODAL ──
+window.saveModal = async function() {
+  const btn = document.getElementById('modalSaveBtn')
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving...'
+  try {
+    await saveRecord()
+    closeModal()
+    await loadMasterData()
+    await loadPage(currentPage)
+    toast('Saved successfully!')
+  } catch(e) {
+    toast(e.message || 'Something went wrong', 'error')
+  }
+  btn.disabled = false; btn.textContent = 'Save'
+}
+
+async function saveRecord() {
+  const p = currentModal
+  const g = id => document.getElementById(id)?.value || ''
+  const gb = id => document.getElementById(id)?.value === 'true'
+
+  if (p==='users') {
+    if (!editingId) {
+      // Create new auth user then profile
+      const { data, error } = await sb.auth.admin?.createUser?.({
+        email: g('m-email'), password: g('m-password'),
+        email_confirm: true
+      }) || { error: { message: 'Admin API not available from browser. Use Supabase dashboard to create auth users.' } }
+      if (error) throw error
+      await sb.from('user_profiles').insert({
+        id: data.user.id, full_name: g('m-fullname'), username: g('m-username'),
+        role_profile_id: g('m-roleprofile')||null, factory_id: g('m-factory')||null
+      })
+    } else {
+      await sb.from('user_profiles').update({
+        full_name: g('m-fullname'), username: g('m-username'),
+        role_profile_id: g('m-roleprofile')||null, factory_id: g('m-factory')||null,
+        is_active: gb('m-active')
+      }).eq('id', editingId)
+    }
+  } else if (p==='roles') {
+    const payload = {name:g('m-name'), description:g('m-desc'), is_active: editingId?gb('m-active'):true}
+    if (editingId) await sb.from('roles').update(payload).eq('id',editingId)
+    else await sb.from('roles').insert(payload)
+  } else if (p==='roleprofiles') {
+    const name = g('m-name'); const desc = g('m-desc')
+    const selectedRoles = [...document.querySelectorAll('#roleChips .chip.selected')].map(c=>c.dataset.id)
+    let profId = editingId
+    if (editingId) {
+      await sb.from('role_profiles').update({name,description:desc}).eq('id',editingId)
+      await sb.from('role_profile_roles').delete().eq('role_profile_id',editingId)
+    } else {
+      const { data } = await sb.from('role_profiles').insert({name,description:desc}).select().single()
+      profId = data.id
+    }
+    if (selectedRoles.length) await sb.from('role_profile_roles').insert(selectedRoles.map(rid=>({role_profile_id:profId,role_id:rid})))
+  } else if (p==='factories') {
+    const payload = {name:g('m-name'),location:g('m-location'),is_active:editingId?gb('m-active'):true}
+    if (editingId) await sb.from('factories').update(payload).eq('id',editingId)
+    else await sb.from('factories').insert(payload)
+  } else if (p==='customers') {
+    const payload = {name:g('m-name'),contact_person:g('m-contact'),email:g('m-email'),phone:g('m-phone'),address:g('m-address'),country:g('m-country'),is_active:editingId?gb('m-active'):true}
+    if (editingId) await sb.from('customers').update(payload).eq('id',editingId)
+    else await sb.from('customers').insert(payload)
+  } else if (p==='departments') {
+    const payload = {name:g('m-name'),description:g('m-desc'),factory_id:g('m-factory')||null,is_active:editingId?gb('m-active'):true}
+    if (editingId) await sb.from('departments').update(payload).eq('id',editingId)
+    else await sb.from('departments').insert(payload)
+  } else if (p==='shifts') {
+    const payload = {name:g('m-name'),start_time:g('m-start')||null,end_time:g('m-end')||null,description:g('m-desc'),is_active:editingId?gb('m-active'):true}
+    if (editingId) await sb.from('shifts').update(payload).eq('id',editingId)
+    else await sb.from('shifts').insert(payload)
+  } else if (p==='orders') {
+    const payload = {order_no:g('m-orderno'),customer_id:g('m-customer')||null,style_number:g('m-style'),product_name:g('m-product'),quantity:parseInt(g('m-qty'))||0,order_date:g('m-orderdate')||null,delivery_date:g('m-delivery')||null,factory_id:g('m-factory')||null,status:g('m-status')||'active',notes:g('m-notes')}
+    if (editingId) await sb.from('orders').update(payload).eq('id',editingId)
+    else await sb.from('orders').insert(payload)
+  }
+}
+
+function openModal() { document.getElementById('modalOverlay').classList.add('show') }
+window.closeModal = function() { document.getElementById('modalOverlay').classList.remove('show'); editingId=null }
+document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal() })
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal() })
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin() })
+</script>
+</body>
+</html>
